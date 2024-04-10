@@ -1,0 +1,30 @@
+{
+    "Volo": {
+        "theme": {
+            "font": "Helvetica 12",
+            "font_color": "black",
+            "background": "white"
+        },
+        "personal_bests": {
+            "We are Number One (# of Volos)": 2,
+            "We are Legion (# of Creatures)": 3,
+            "My One True Nemesis (# of TNN)": 4,
+            "Highest Power": 3,
+            "What's Yours is Mine (win w/ Op)": 0
+        },
+        "image_path": "images/Volo.png"
+    },
+    "Thassa": {
+        "theme": {
+            "font": "Arial 14",
+            "font_color": "blue",
+            "background": "light gray"
+        },
+        "personal_bests": {
+            "Who needs more? (Thassa Kills)": 2,
+            "Omae wa moe Shindeiru (Thassa 21 Atk)": 0,
+            "Blue Land Destruction (Land Kills)": 0
+        },
+        "image_path": "images/Thassa.jpg"
+    }
+}
