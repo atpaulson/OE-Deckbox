@@ -5,6 +5,67 @@ import os
 import tkinter.font as tkFont
 from PIL import Image, ImageTk
 import copy
+import time
+from rpi_ws281x import *
+import argparse
+import threading
+
+import RPi.GPIO as GPIO
+
+#Pin Definitions
+ltsensor = 11
+motor = 13
+
+#GPIO Setup:
+GPIO.setmode(GPIO.BOARD)
+
+#Sensor Setup:
+GPIO.setup(motor, GPIO.OUT)
+GPIO.setup(ltsensor, GPIO.IN)
+
+LED_COUNT      = 15      # Expecting to use a smaller set of LEDs
+LED_PIN        = 12      # GPIO pin connected to the pixels (12 uses PWM! [Raspberry pi 2b]).
+LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
+LED_BRIGHTNESS = 15     # Set to 0 for darkest and 255 for brightest
+LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
+
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if pos < 85:
+        return Color(pos * 3, 255 - pos * 3, 0)
+    elif pos < 170:
+        pos -= 85
+        return Color(255 - pos * 3, 0, pos * 3)
+    else:
+        pos -= 170
+        return Color(0, pos * 3, 255 - pos * 3)
+
+# Define functions which animate LEDs in various ways.
+def colorWipe(strip, color, wait_ms=50):
+    """Wipe color across display a pixel at a time."""
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, color)
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def rainbow(strip, wait_ms=200, iterations=2):
+    """Draw rainbow that fades across all pixels at once."""   
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((i+j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=50, iterations=8):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    rainbowCycleTime = time.time()
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+        strip.show()
+#        time.sleep(wait_ms/1000.0)
 
 class Application(tk.Tk):
     def __init__(self):
@@ -148,6 +209,9 @@ class Application(tk.Tk):
         self.save_decks()
 
     def update_life(self, change):
+        GPIO.output(motor, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(motor, GPIO.LOW)
         self.life += change
         self.life_canvas.itemconfig(self.life_text_id, text=str(self.life))
 
@@ -223,6 +287,7 @@ class Application(tk.Tk):
             button = ttk.Button(frame, text=deck_name, command=lambda dn=deck_name: self.select_deck(dn))
             #Removing side="left" for center creation
             button.pack(side="left",padx=20, anchor='center')
+        #rainbow(strip)
 
     def select_deck(self, deck_name):
         self.selected_deck = deck_name
@@ -246,6 +311,7 @@ class Application(tk.Tk):
         #Decks json includes PBs now
         self.save_decks()
         self.destroy()
+        colorWipe(strip, Color(0,0,0), 10)
         
     def apply_theme(self, widget, additional_text=None):
         theme = self.decks[self.selected_deck]['theme']
@@ -261,5 +327,26 @@ class Application(tk.Tk):
             widget.configure(text=additional_text)
 
 if __name__ == "__main__":
-    app = Application()
-    app.mainloop()
+    # Process arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
+    args = parser.parse_args()
+
+    # Create NeoPixel object with appropriate configuration.
+    strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
+
+    print ('Press Ctrl-C to quit.')
+    if not args.clear:
+        print('Use "-c" argument to NOT clear LEDs on exit')
+
+    try:
+# TODO: Figure out how to do the strip WITHOUT blocking
+#        rainbow(strip)
+        app = Application()
+        app.mainloop()
+    except KeyboardInterrupt:
+        #Adjusted it so it by default clears the strip, -c to NOT clear
+        if not args.clear:
+            colorWipe(strip, Color(0,0,0), 10)
